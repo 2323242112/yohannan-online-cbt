@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yohannan Online CBT</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#eef3f9;color:#17243b}
+header{background:#102b50;color:white;text-align:center;padding:25px 12px}
+header h1{margin:0;font-size:25px}
+header p{margin:8px 0 0}
+main{max-width:700px;margin:25px auto;padding:15px}
+.card{background:white;padding:22px;border-radius:12px;box-shadow:0 3px 15px #0001;margin-bottom:18px}
+h2{color:#123b70}
+input,select,button{width:100%;padding:13px;margin:8px 0;border-radius:7px;border:1px solid #ccd5e0;font-size:16px}
+button{background:#1456a0;color:white;border:0;font-weight:bold;cursor:pointer}
+button:disabled{background:#999}
+.option{display:block;background:#f1f5fa;padding:12px;margin:8px 0;border-radius:7px}
+.option input{width:auto;margin-right:8px}
+.small{font-size:13px;color:#667}
+.question{border-bottom:1px solid #ddd;padding:15px 0}
+#quiz,#dashboard,#result{display:none}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{border:1px solid #ddd;padding:8px;text-align:left}
+</style>
+</head>
+<body>
+
+<header>
+<h1>YOHANNAN ONLINE CBT</h1>
+<p>Learn • Practise • Excel</p>
+</header>
+
+<main>
+<section class="card" id="home">
+<h2>Welcome, Student!</h2>
+<p>Enter your name and select a subject to begin.</p>
+<input id="studentName" placeholder="Enter your full name">
+<select id="subject">
+<option value="">Select Subject</option>
+<option value="Physics">Physics</option>
+<option value="Chemistry">Chemistry</option>
+</select>
+<button onclick="startQuiz()">Start Assessment</button>
+<p class="small">20 questions • Choose one answer per question.</p>
+</section>
+
+<section class="card" id="quiz">
+<h2 id="quizTitle"></h2>
+<p id="progress"></p>
+<div id="questions"></div>
+<button onclick="submitQuiz()">Submit Assessment</button>
+</section>
+
+<section class="card" id="result">
+<h2>Assessment Completed!</h2>
+<div id="score"></div>
+<div id="corrections"></div>
+<button onclick="location.reload()">Back to Home</button>
+</section>
+
+<section class="card" id="teacher">
+<h2>Teacher Dashboard</h2>
+<p class="small">Teacher access only.</p>
+<input id="teacherEmail" type="email" placeholder="Teacher email">
+<input id="teacherPassword" type="password" placeholder="Teacher password">
+<button onclick="teacherLogin()">Teacher Login</button>
+<div id="dashboard" style="display:none">
+<h2>Student Results</h2>
+<button onclick="loadResults()">Refresh Results</button>
+<button onclick="downloadCSV()">Download Results (CSV)</button>
+<div id="resultsTable"></div>
+<button onclick="teacherLogout()">Logout</button>
+</div>
+</section>
+</main>
+
+<script>
+const firebaseConfig = {
+apiKey: "AIzaSyCbgfmfc49bF4sPjGD2nhLQzPGjyqqRJc0",
+authDomain: "yohannan-online-cbt.firebaseapp.com",
+projectId: "yohannan-online-cbt",
+storageBucket: "yohannan-online-cbt.firebasestorage.app",
+messagingSenderId: "422656389518",
+appId: "1:422656389518:web:956b11304531426f29b4df",
+measurementId: "G-RDSCPRH2N8"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const questions = {
+Physics: [
+["Physics is the study of...",["Living things","Matter, energy and their interactions","Plants","Chemical substances"],1,"Physics studies matter, energy and their interactions."],
+["Which is a fundamental quantity?",["Speed","Force","Length","Density"],2,"Length is a fundamental physical quantity."],
+["The SI unit of length is...",["Metre","Kilogram","Second","Newton"],0,"The SI unit of length is metre (m)."],
+["The SI unit of time is...",["Hour","Minute","Second","Day"],2,"The SI unit of time is second (s)."],
+["The SI unit of mass is...",["Gram","Kilogram","Newton","Metre"],1,"The SI unit of mass is kilogram (kg)."],
+["Speed is defined as...",["Distance × time","Distance ÷ time","Time ÷ distance","Mass ÷ volume"],1,"Speed = distance divided by time."],
+["A car travels 100 m in 20 s. Its speed is...",["2 m/s","5 m/s","20 m/s","50 m/s"],1,"Speed = 100/20 = 5 m/s."],
+["Velocity is...",["Distance only","Speed in a given direction","Mass per time","Change in mass"],1,"Velocity is speed in a specified direction."],
+["Acceleration is the rate of change of...",["Distance","Mass","Velocity","Force"],2,"Acceleration is the change in velocity per unit time."],
+["The SI unit of acceleration is...",["m/s","m/s²","kg/m","N/m"],1,"Acceleration is measured in metres per second squared."],
+["A body moving at constant velocity has...",["Zero acceleration","Increasing acceleration","Negative mass","Increasing speed"],0,"Constant velocity means no change in velocity."],
+["The instrument used to measure time is...",["Thermometer","Stopwatch","Ammeter","Metre rule"],1,"A stopwatch measures time intervals."],
+["Distance is a...",["Vector quantity","Scalar quantity","Derived direction","Force"],1,"Distance has magnitude but no direction."],
+["Displacement is a...",["Scalar quantity","Vector quantity","Fundamental quantity","Unit"],1,"Displacement has magnitude and direction."],
+["The slope of a distance-time graph represents...",["Mass","Speed","Force","Time"],1,"The slope represents speed."],
+["The slope of a velocity-time graph represents...",["Acceleration","Distance","Mass","Pressure"],0,"The slope represents acceleration."],
+["The area under a velocity-time graph represents...",["Force","Displacement","Power","Mass"],1,"The area gives displacement."],
+["The dimension of mass is...",["L","M","T","ML"],1,"Mass has dimension M."],
+["The dimension of velocity is...",["LT⁻¹","LT⁻²","MLT⁻¹","M"],0,"Velocity = length/time = LT⁻¹."],
+["Which of these is a derived quantity?",["Mass","Length","Time","Speed"],3,"Speed is derived from distance and time."]
+],
+Chemistry: [
+["Chemistry is the study of...",["Stars only","Matter and its changes","Plants only","Weather"],1,"Chemistry studies matter, its properties and changes."],
+["Anything that has mass and occupies space is...",["Energy","Matter","Light","Heat"],1,"Matter has mass and occupies space."],
+["The smallest particle of an element that retains its properties is...",["Molecule","Atom","Cell","Compound"],1,"An atom is the smallest unit of an element."],
+["A substance made of only one type of atom is...",["Mixture","Compound","Element","Solution"],2,"An element contains one type of atom."],
+["Water is an example of a...",["Element","Compound","Metal","Mixture"],1,"Water contains hydrogen and oxygen chemically combined."],
+["The chemical formula for water is...",["CO₂","H₂O","NaCl","O₂"],1,"Water is H₂O."],
+["A physical change is usually...",["Reversible","Always explosive","Formation of a new substance","Burning"],0,"A physical change does not form a new substance."],
+["Burning paper is a...",["Physical change","Chemical change","Change of state","Separation method"],1,"Burning produces new substances."],
+["The change of liquid to gas is...",["Freezing","Condensation","Evaporation","Melting"],2,"Evaporation changes liquid to gas."],
+["The change of gas to liquid is...",["Condensation","Melting","Sublimation","Freezing"],0,"Condensation changes gas to liquid."],
+["The combining capacity of an atom is called...",["Density","Valency","Volume","Mass"],1,"Valency describes combining capacity."],
+["A positively charged ion is called...",["Anion","Cation","Atom","Radical"],1,"A cation carries a positive charge."],
+["A negatively charged ion is called...",["Cation","Anion","Proton","Molecule"],1,"An anion carries a negative charge."],
+["The charge on a proton is...",["Negative","Positive","Neutral","Variable"],1,"A proton has a positive charge."],
+["The charge on an electron is...",["Positive","Negative","Neutral","Zero mass"],1,"An electron has a negative charge."],
+["Which method separates sand from water?",["Filtration","Distillation","Sublimation","Chromatography"],0,"Filtration separates an insoluble solid from a liquid."],
+["Which method can separate coloured dyes?",["Filtration","Chromatography","Decantation","Sieving"],1,"Chromatography separates components of mixtures."],
+["Common salt has the formula...",["HCl","NaCl","H₂O","CO₂"],1,"Sodium chloride is NaCl."],
+["A mixture of two or more metals is called...",["Alloy","Element","Acid","Base"],0,"An alloy is a mixture containing metals."],
+["Which branch of chemistry studies carbon compounds?",["Organic chemistry","Physical chemistry","Analytical chemistry","Inorganic chemistry"],0,"Organic chemistry mainly studies carbon compounds."]
+]
+};
+
+let currentQuestions=[], student="", selectedSubject="", results=[], lastResult=null;
+
+async function startQuiz(){
+student=document.getElementById("studentName").value.trim();
+selectedSubject=document.getElementById("subject").value;
+if(!student || !selectedSubject){alert("Enter your name and select a subject.");return;}
+try{
+if(!auth.currentUser) await auth.signInAnonymously();
+}catch(e){alert("Could not connect. Please check your internet and try again.");return;}
+currentQuestions=questions[selectedSubject];
+document.getElementById("home").style.display="none";
+document.getElementById("quiz").style.display="block";
+document.getElementById("quizTitle").textContent=selectedSubject+" Assessment";
+document.getElementById("progress").textContent="Answer all 20 questions.";
+let html="";
+currentQuestions.forEach((q,i)=>{
+html+=`<div class="question"><b>${i+1}. ${q[0]}</b>`;
+q[1].forEach((opt,j)=>{
+html+=`<label class="option"><input type="radio" name="q${i}" value="${j}">${String.fromCharCode(65+j)}. ${opt}</label>`;
+});
+html+="</div>";
+});
+document.getElementById("questions").innerHTML=html;
+}
+
+async function submitQuiz(){
+let score=0, corrections="";
+currentQuestions.forEach((q,i)=>{
+let chosen=document.querySelector(`input[name="q${i}"]:checked`);
+let answer=chosen?Number(chosen.value):-1;
+if(answer===q[2])score++;
+corrections+=`<p><b>${i+1}. ${q[0]}</b><br>Your answer: ${answer<0?"Not answered":q[1][answer]}<br>Correct answer: ${q[1][q[2]]}<br><span class="small">${q[3]}</span></p>`;
+});
+lastResult={name:student,subject:selectedSubject,score:score,total:20,percentage:score*5,submittedAt:new Date().toISOString()};
+try{
+await db.collection("results").add({
+...lastResult,
+uid:auth.currentUser.uid,
+submittedAt:firebase.firestore.FieldValue.serverTimestamp()
+});
+}catch(e){
+alert("Your result could not be saved. Check your internet and try submitting again.");
+return;
+}
+document.getElementById("quiz").style.display="none";
+document.getElementById("result").style.display="block";
+document.getElementById("score").innerHTML=`<h2>${student}</h2><h1>${score}/20 (${score*5}%)</h1><p>${score>=15?"Excellent work!":score>=10?"Good effort. Keep practising.":"Keep studying and try again."}</p>`;
+document.getElementById("corrections").innerHTML="<h3>Corrections and Explanations</h3>"+corrections;
+}
+
+async function teacherLogin(){
+let email=document.getElementById("teacherEmail").value.trim();
+let password=document.getElementById("teacherPassword").value;
+if(email.toLowerCase()!=="jadeyemi829@gmail.com"){alert("This account is not authorised.");return;}
+try{
+await auth.signInWithEmailAndPassword(email,password);
+document.getElementById("dashboard").style.display="block";
+await loadResults();
+}catch(e){alert("Login failed. Check your email and password.");}
+}
+
+async function loadResults(){
+if(!auth.currentUser || auth.currentUser.email!=="jadeyemi829@gmail.com"){alert("Please log in as teacher.");return;}
+try{
+let snap=await db.collection("results").orderBy("submittedAt","desc").get();
+results=snap.docs.map(d=>({id:d.id,...d.data()}));
+let html="<table><tr><th>Name</th><th>Subject</th><th>Score</th><th>%</th><th>Action</th></tr>";
+results.forEach(r=>{
+html+=`<tr><td>${safe(r.name)}</td><td>${safe(r.subject)}</td><td>${r.score}/${r.total}</td><td>${r.percentage}%</td><td><button onclick="deleteResult('${r.id}')">Delete</button></td></tr>`;
+});
+html+="</table>";
+document.getElementById("resultsTable").innerHTML=results.length?html:"No student results yet.";
+}catch(e){alert("Could not load results. Check your Firestore rules.");}
+}
+
+function safe(value){
+return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function deleteResult(id){
+if(!confirm("Delete this result?"))return;
+try{await db.collection("results").doc(id).delete();await loadResults();}
+catch(e){alert("Could not delete result.");}
+}
+
+function downloadCSV(){
+if(!results.length){alert("No results to download.");return;}
+let rows=[["Name","Subject","Score","Total","Percentage"],...results.map(r=>[r.name,r.subject,r.score,r.total,r.percentage])];
+let csv=rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+let a=document.createElement("a");
+a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+a.download="Yohannan-CBT-Results.csv";
+a.click();
+URL.revokeObjectURL(a.href);
+}
+
+async function teacherLogout(){
+await auth.signOut();
+document.getElementById("dashboard").style.display="none";
+alert("Logged out.");
+}
+</script>
+</body>
+</html>
