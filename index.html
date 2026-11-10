@@ -106,6 +106,17 @@ td,th{border:1px solid #ddd;padding:8px;text-align:left}
 <textarea id="questionExplanation" placeholder="Explain the correct answer"></textarea>
 
 <button onclick="addQuestion()">Save Question</button>
+<hr>
+<h3>Bulk Question Upload</h3>
+<p>Paste your prepared questions below.</p>
+
+<textarea id="bulkQuestions"
+placeholder="Paste question bank here..."
+style="min-height:200px"></textarea>
+
+<button onclick="uploadBulkQuestions()">
+Upload All Questions
+</button>
 <h2>Student Results</h2>
 <button onclick="loadResults()">Refresh Results</button>
 <button onclick="downloadCSV()">Download Results (CSV)</button>
@@ -339,6 +350,72 @@ async function addQuestion(){
   } catch(error) {
     console.error(error);
     alert("Could not save question. Check your connection and teacher login.");
+  }
+}
+async function uploadBulkQuestions(){
+  const input = document.getElementById("bulkQuestions").value.trim();
+
+  if(!input){
+    alert("Paste your questions first.");
+    return;
+  }
+
+  try {
+    if(!auth.currentUser || auth.currentUser.email !== "jadeyemi829@gmail.com"){
+      alert("Please log in as the teacher.");
+      return;
+    }
+
+    const questionsToUpload = JSON.parse(input);
+
+    if(!Array.isArray(questionsToUpload) || questionsToUpload.length === 0){
+      alert("Invalid question format.");
+      return;
+    }
+
+    if(questionsToUpload.length > 450){
+      alert("Upload a maximum of 450 questions at a time.");
+      return;
+    }
+
+    questionsToUpload.forEach(q => {
+      if(
+        !["Physics","Chemistry"].includes(q.subject) ||
+        !q.text ||
+        !Array.isArray(q.options) ||
+        q.options.length !== 4 ||
+        q.options.some(option => !option) ||
+        !Number.isInteger(q.correct) ||
+        q.correct < 0 ||
+        q.correct > 3
+      ){
+        throw new Error("One or more questions have incorrect formatting.");
+      }
+    });
+
+    const batch = db.batch();
+
+    questionsToUpload.forEach(q => {
+      const ref = db.collection("questions").doc();
+
+      batch.set(ref, {
+        subject: q.subject,
+        text: q.text,
+        options: q.options,
+        correct: q.correct,
+        explanation: q.explanation || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+
+    alert(questionsToUpload.length + " questions uploaded successfully!");
+    document.getElementById("bulkQuestions").value = "";
+
+  } catch(error) {
+    console.error(error);
+    alert("Upload failed: " + error.message);
   }
 }
 </script>
