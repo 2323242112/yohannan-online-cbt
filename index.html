@@ -142,7 +142,14 @@ Chemistry: [
 };
 
 let currentQuestions=[], student="", selectedSubject="", results=[], lastResult=null;
-
+function shuffleArray(array){
+let shuffled=[...array];
+for(let i=shuffled.length-1;i>0;i--){
+let j=Math.floor(Math.random()*(i+1));
+[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+}
+return shuffled;
+}
 async function startQuiz(){
 student=document.getElementById("studentName").value.trim();
 selectedSubject=document.getElementById("subject").value;
