@@ -117,6 +117,18 @@ style="min-height:200px"></textarea>
 <button onclick="uploadBulkQuestions()">
 Upload All Questions
 </button>
+<hr>
+<h3>Saved Questions</h3>
+
+<select id="filterSubject">
+  <option value="All">All Subjects</option>
+  <option value="Physics">Physics</option>
+  <option value="Chemistry">Chemistry</option>
+</select>
+
+<button onclick="loadQuestions()">View Questions</button>
+
+<div id="savedQuestions"></div>
 <h2>Student Results</h2>
 <button onclick="loadResults()">Refresh Results</button>
 <button onclick="downloadCSV()">Download Results (CSV)</button>
@@ -439,6 +451,67 @@ async function uploadBulkQuestions(){
     console.error(error);
     alert("Upload failed: " + error.message);
   }
+}
+async function loadQuestions(){
+  const container = document.getElementById("savedQuestions");
+  const subject = document.getElementById("filterSubject").value;
+
+  if(!auth.currentUser || auth.currentUser.email !== "jadeyemi829@gmail.com"){
+    alert("Please log in as the teacher first.");
+    return;
+  }
+
+  container.innerHTML = "Loading questions...";
+
+  try {
+    let query = db.collection("questions");
+
+    if(subject !== "All"){
+      query = query.where("subject", "==", subject);
+    }
+
+    const snapshot = await query.get();
+
+    if(snapshot.empty){
+      container.innerHTML = "No saved questions found.";
+      return;
+    }
+
+    let html = "";
+
+    snapshot.forEach(doc => {
+      const q = doc.data();
+
+      html += `
+        <div class="question">
+          <b>${q.subject}</b>
+          <p>${escapeHTML(q.text)}</p>
+          ${q.options.map((option, i) =>
+            `<p>${String.fromCharCode(65+i)}. ${escapeHTML(option)}</p>`
+          ).join("")}
+          <p><b>Correct answer:</b> ${String.fromCharCode(65+q.correct)}</p>
+          <p><b>Explanation:</b> ${escapeHTML(q.explanation || "None")}</p>
+          <hr>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+  } catch(error) {
+    console.error(error);
+    container.innerHTML = "Unable to load questions: " + error.message;
+  }
+}
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
 }
 </script>
 </body>
