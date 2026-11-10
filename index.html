@@ -157,7 +157,15 @@ if(!student || !selectedSubject){alert("Enter your name and select a subject.");
 try{
 if(!auth.currentUser) await auth.signInAnonymously();
 }catch(e){alert("Could not connect. Please check your internet and try again.");return;}
-currentQuestions=questions[selectedSubject];
+currentQuestions=shuffleArray(questions[selectedSubject].map(q=>{
+let options=shuffleArray(q[1].map((text,index)=>({text,index})));
+return [
+q[0],
+options.map(option=>option.text),
+options.findIndex(option=>option.index===q[2]),
+q[3]
+];
+}));
 document.getElementById("home").style.display="none";
 document.getElementById("quiz").style.display="block";
 document.getElementById("quizTitle").textContent=selectedSubject+" Assessment";
