@@ -70,6 +70,42 @@ td,th{border:1px solid #ddd;padding:8px;text-align:left}
 <input id="teacherPassword" type="password" placeholder="Teacher password">
 <button onclick="teacherLogin()">Teacher Login</button>
 <div id="dashboard" style="display:none">
+<hr>
+<h3>Question Manager</h3>
+
+<label>Choose Subject</label>
+<select id="newQuestionSubject">
+<option value="Physics">Physics</option>
+<option value="Chemistry">Chemistry</option>
+</select>
+
+<label>Enter Question</label>
+<textarea id="newQuestionText" placeholder="Type your question here"></textarea>
+
+<label>Option A</label>
+<input id="optionA" placeholder="Option A">
+
+<label>Option B</label>
+<input id="optionB" placeholder="Option B">
+
+<label>Option C</label>
+<input id="optionC" placeholder="Option C">
+
+<label>Option D</label>
+<input id="optionD" placeholder="Option D">
+
+<label>Correct Answer</label>
+<select id="correctOption">
+<option value="0">A</option>
+<option value="1">B</option>
+<option value="2">C</option>
+<option value="3">D</option>
+</select>
+
+<label>Explanation</label>
+<textarea id="questionExplanation" placeholder="Explain the correct answer"></textarea>
+
+<button onclick="addQuestion()">Save Question</button>
 <h2>Student Results</h2>
 <button onclick="loadResults()">Refresh Results</button>
 <button onclick="downloadCSV()">Download Results (CSV)</button>
@@ -256,6 +292,54 @@ async function teacherLogout(){
 await auth.signOut();
 document.getElementById("dashboard").style.display="none";
 alert("Logged out.");
+}
+async function addQuestion(){
+  const subject = document.getElementById("newQuestionSubject").value;
+  const text = document.getElementById("newQuestionText").value.trim();
+
+  const options = [
+    document.getElementById("optionA").value.trim(),
+    document.getElementById("optionB").value.trim(),
+    document.getElementById("optionC").value.trim(),
+    document.getElementById("optionD").value.trim()
+  ];
+
+  const correct = Number(document.getElementById("correctOption").value);
+  const explanation = document.getElementById("questionExplanation").value.trim();
+
+  if(!text || options.some(option => !option)){
+    alert("Enter the question and all four options.");
+    return;
+  }
+
+  try {
+    if(!auth.currentUser || auth.currentUser.email !== "jadeyemi829@gmail.com"){
+      alert("Please log in with the teacher account first.");
+      return;
+    }
+
+    await db.collection("questions").add({
+      subject,
+      text,
+      options,
+      correct,
+      explanation,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Question saved successfully!");
+
+    document.getElementById("newQuestionText").value = "";
+    document.getElementById("optionA").value = "";
+    document.getElementById("optionB").value = "";
+    document.getElementById("optionC").value = "";
+    document.getElementById("optionD").value = "";
+    document.getElementById("questionExplanation").value = "";
+
+  } catch(error) {
+    console.error(error);
+    alert("Could not save question. Check your connection and teacher login.");
+  }
 }
 </script>
 </body>
