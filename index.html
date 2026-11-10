@@ -204,8 +204,19 @@ if(!student || !selectedSubject){alert("Enter your name and select a subject.");
 try{
 if(!auth.currentUser) await auth.signInAnonymously();
 }catch(e){alert("Could not connect. Please check your internet and try again.");return;}
-currentQuestions=shuffleArray(questions[selectedSubject].map(q=>{
-let options=shuffleArray(q[1].map((text,index)=>({text,index})));
+const snapshot = await db.collection("questions")
+  .where("subject", "==", selectedSubject)
+  .get();
+
+if(snapshot.empty){
+  alert("No questions available for this subject.");
+  return;
+}
+
+currentQuestions = shuffleArray(snapshot.docs.map(doc => {
+  const q = doc.data();
+  return [q.text, q.options, q.correct, q.explanation || ""];
+}));
 return [
 q[0],
 options.map(option=>option.text),
