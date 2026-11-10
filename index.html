@@ -490,7 +490,10 @@ async function loadQuestions(){
             `<p>${String.fromCharCode(65+i)}. ${escapeHTML(option)}</p>`
           ).join("")}
           <p><b>Correct answer:</b> ${String.fromCharCode(65+q.correct)}</p>
-          <p><b>Explanation:</b> ${escapeHTML(q.explanation || "None")}</p>
+<p><b>Explanation:</b> ${escapeHTML(q.explanation || "None")}</p>
+
+<button onclick="editQuestion('${doc.id}')">Edit</button>
+<button onclick="deleteQuestion('${doc.id}')">Delete</button>
           <hr>
         </div>
       `;
@@ -512,6 +515,70 @@ function escapeHTML(value){
     '"': "&quot;",
     "'": "&#39;"
   }[ch]));
+}
+async function editQuestion(id){
+  try {
+    const ref = db.collection("questions").doc(id);
+    const doc = await ref.get();
+
+    if(!doc.exists){
+      alert("Question not found.");
+      return;
+    }
+
+    const q = doc.data();
+
+    const text = prompt("Edit question:", q.text);
+    if(text === null) return;
+
+    const options = [];
+
+    for(let i=0; i<4; i++){
+      const answer = prompt("Edit option "+String.fromCharCode(65+i)+":", q.options[i]);
+      if(answer === null) return;
+      options.push(answer);
+    }
+
+    const correct = prompt("Enter correct option (A, B, C or D):", String.fromCharCode(65+q.correct));
+    if(correct === null) return;
+
+    const correctIndex = ["A","B","C","D"].indexOf(correct.trim().toUpperCase());
+
+    if(correctIndex === -1){
+      alert("Enter only A, B, C or D.");
+      return;
+    }
+
+    const explanation = prompt("Edit explanation:", q.explanation || "");
+    if(explanation === null) return;
+
+    await ref.update({
+      text: text,
+      options: options,
+      correct: correctIndex,
+      explanation: explanation
+    });
+
+    alert("Question updated successfully!");
+    loadQuestions();
+
+  } catch(error){
+    alert("Edit failed: " + error.message);
+  }
+}
+
+async function deleteQuestion(id){
+  if(!confirm("Are you sure you want to delete this question?")) return;
+
+  try {
+    await db.collection("questions").doc(id).delete();
+
+    alert("Question deleted successfully!");
+    loadQuestions();
+
+  } catch(error){
+    alert("Delete failed: " + error.message);
+  }
 }
 </script>
 </body>
