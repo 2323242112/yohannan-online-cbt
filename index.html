@@ -197,48 +197,59 @@ let j=Math.floor(Math.random()*(i+1));
 }
 return shuffled;
 }
+
 async function startQuiz(){
-student=document.getElementById("studentName").value.trim();
-selectedSubject=document.getElementById("subject").value;
-if(!student || !selectedSubject){alert("Enter your name and select a subject.");return;}
-try{
-if(!auth.currentUser) await auth.signInAnonymously();
-}catch(e){alert("Could not connect. Please check your internet and try again.");return;}
-const snapshot = await db.collection("questions")
-  .where("subject", "==", selectedSubject)
-  .get();
+  student=document.getElementById("studentName").value.trim();
+  selectedSubject=document.getElementById("subject").value;
 
-if(snapshot.empty){
-  alert("No questions available for this subject.");
-  return;
+  if(!student || !selectedSubject){
+    alert("Enter your name and select a subject.");
+    return;
+  }
+
+  try {
+    if(!auth.currentUser){
+      await auth.signInAnonymously();
+    }
+
+    const snapshot = await db.collection("questions")
+      .where("subject", "==", selectedSubject)
+      .get();
+
+    if(snapshot.empty){
+      alert("No questions available for this subject.");
+      return;
+    }
+
+    currentQuestions = shuffleArray(snapshot.docs.map(doc=>{
+      const q=doc.data();
+      return [q.text,q.options,q.correct,q.explanation || ""];
+    }));
+
+    document.getElementById("home").style.display="none";
+    document.getElementById("quiz").style.display="block";
+    document.getElementById("quizTitle").textContent=selectedSubject+" Assessment";
+    document.getElementById("progress").textContent="Answer all "+currentQuestions.length+" questions.";
+
+    let html="";
+
+    currentQuestions.forEach((q,i)=>{
+      html+=`<div class="question"><b>${i+1}. ${q[0]}</b>`;
+
+      q[1].forEach((opt,j)=>{
+        html+=`<label class="option"><input type="radio" name="q${i}" value="${j}">${String.fromCharCode(65+j)}. ${opt}</label>`;
+      });
+
+      html+="</div>";
+    });
+
+    document.getElementById("questions").innerHTML=html;
+
+  } catch(error) {
+    console.error(error);
+    alert("Quiz loading failed: "+error.message);
+  }
 }
-
-currentQuestions = shuffleArray(snapshot.docs.map(doc => {
-  const q = doc.data();
-  return [q.text, q.options, q.correct, q.explanation || ""];
-}));
-return [
-q[0],
-options.map(option=>option.text),
-options.findIndex(option=>option.index===q[2]),
-q[3]
-];
-}));
-document.getElementById("home").style.display="none";
-document.getElementById("quiz").style.display="block";
-document.getElementById("quizTitle").textContent=selectedSubject+" Assessment";
-document.getElementById("progress").textContent="Answer all 20 questions.";
-let html="";
-currentQuestions.forEach((q,i)=>{
-html+=`<div class="question"><b>${i+1}. ${q[0]}</b>`;
-q[1].forEach((opt,j)=>{
-html+=`<label class="option"><input type="radio" name="q${i}" value="${j}">${String.fromCharCode(65+j)}. ${opt}</label>`;
-});
-html+="</div>";
-});
-document.getElementById("questions").innerHTML=html;
-}
-
 async function submitQuiz(){
 let score=0, corrections="";
 currentQuestions.forEach((q,i)=>{
